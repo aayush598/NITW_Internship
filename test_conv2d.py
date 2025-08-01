@@ -6,8 +6,8 @@ import time
 # Parameters (must match Verilog)
 IN_CHANNELS = 2
 OUT_CHANNELS = 1
-IN_HEIGHT = 4
-IN_WIDTH = 4
+IN_HEIGHT = 8
+IN_WIDTH = 8
 KERNEL_SIZE = 2
 STRIDE = 2
 PADDING = 0

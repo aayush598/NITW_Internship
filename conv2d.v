@@ -2,8 +2,8 @@ module conv2d #(
     parameter BATCH_SIZE   = 1,
     parameter IN_CHANNELS  = 67,
     parameter OUT_CHANNELS = 64,
-    parameter IN_HEIGHT    = 4,
-    parameter IN_WIDTH     = 4,
+    parameter IN_HEIGHT    = 8,
+    parameter IN_WIDTH     = 8,
     parameter KERNEL_SIZE  = 3,
     parameter STRIDE       = 2,
     parameter PADDING      = 1,
@@ -42,8 +42,12 @@ module conv2d #(
 integer w;
 always @(posedge clk) begin
     if (rst) begin
-        $readmemh("weights.txt", weights);
-        $readmemh("bias.txt", bias);
+        for (w = 0; w < WEIGHT_SIZE; w = w + 1) begin
+            weights[w] <= 8'd1;  // Use 8'd1 for consistency with DATA_WIDTH
+        end
+        for (w = 0; w < OUT_CHANNELS; w = w + 1) begin
+            bias[w] <= 8'd0;
+        end
     end
 end
     

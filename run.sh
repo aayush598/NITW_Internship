@@ -15,3 +15,5 @@ echo "🔧 VERILOG (vvp out) OUTPUT"
 echo "======================================="
 iverilog -o out conv2d.v conv2d_tb.v
 vvp out
+
+python verify_output.py 
