@@ -50,7 +50,7 @@ def preprocess_image(image_path: str) -> torch.Tensor:
 def save_tensor_flat_hex(tensor: torch.Tensor, path: str):
     """Save a flattened tensor as hex integers."""
     flat = tensor.to(torch.int32).numpy().reshape(-1)
-    np.savetxt(path, flat, fmt='0x%02X')
+    np.savetxt(path, flat, fmt='%02X')
 
 def create_conv_layer() -> nn.Conv2d:
     """Create Conv2D layer with all weights = 1 and biases = 0."""
@@ -64,8 +64,8 @@ def save_weights_bias(conv: nn.Conv2d, weight_path: str, bias_path: str):
     """Save flattened weights and biases to hex files."""
     weights = conv.weight.detach().reshape(-1).to(torch.int32).numpy()
     bias = conv.bias.detach().to(torch.int32).numpy()
-    np.savetxt(weight_path, weights, fmt='0x%02X')
-    np.savetxt(bias_path, bias, fmt='0x%02X')
+    np.savetxt(weight_path, weights, fmt='%02X')
+    np.savetxt(bias_path, bias, fmt='%02X')
 
 def run_convolution(conv: nn.Conv2d, input_tensor: torch.Tensor) -> torch.Tensor:
     """Run convolution and return output tensor."""

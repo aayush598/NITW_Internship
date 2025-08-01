@@ -97,8 +97,6 @@ module tb_conv2d;
 integer f;
     // Test stimulus
     initial begin
-        
-        $display("=== Loading Weights and Bias ===");
         $readmemh("weights.txt", weights);
         $readmemh("bias.txt", bias);
 
@@ -116,13 +114,10 @@ integer f;
         rst = 0;
         #10;
 
-        // Initialize input tensor: 0 to 31 (sequential values for testing)
-        $display("\n=== Initializing Input Data ===");
         $readmemh("input_data.txt", input_mem);
 
         repeat(3) @(posedge clk);
 
-        $display("\n=== Starting Convolution Computation ===");
         // Start convolution and begin counting
         start = 1;
         counting = 1;
@@ -142,12 +137,10 @@ integer f;
         // Calculate execution time
         execution_time_us = cycle_count * 10.0 / 1000.0;
 
-        $display("\n=== Convolution Output Results ===");
         $display("Output Tensor:");
         $display("  [[[[%0d, %0d],", output_mem[0], output_mem[1]);
         $display("      [%0d, %0d]]]]", output_mem[2], output_mem[3]);
-        
-        $display("\n=== Performance Metrics ===");
+
         $display("Execution Time: %.2f µs", execution_time_us);
         $display("Clock Cycles: %0d", cycle_count);
         $display("Clock Frequency: 100 MHz");
