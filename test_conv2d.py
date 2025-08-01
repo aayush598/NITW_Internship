@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import time
 
 # Parameters (must match Verilog)
 IN_CHANNELS = 2
@@ -48,7 +49,10 @@ with torch.no_grad():
 
 # 6. Perform convolution
 with torch.no_grad():
+    start_time = time.perf_counter()
     output = conv(input_tensor)
+    end_time = time.perf_counter()
+    elapsed_time_us = (end_time - start_time) * 1e6  # microseconds
 
 # 7. Convert to 8-bit output using modulo
 output_8bit = output.to(torch.int32) % MODULO  # simulate uint8 wrap-around
@@ -57,6 +61,7 @@ output_8bit = output.to(torch.int32) % MODULO  # simulate uint8 wrap-around
 print("Output Tensor Shape:", output.shape)
 print("Output Tensor (8-bit):")
 print(output_8bit)
+print(f"\n⏱️ Conv2D Layer Execution Time: {elapsed_time_us:.2f} µs")
 
 # 9. Optional: Save to file in decimal
 np.savetxt("expected_output.txt", output_8bit.numpy().reshape(-1), fmt='%d')
