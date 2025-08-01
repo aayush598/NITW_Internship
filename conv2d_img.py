@@ -2,8 +2,9 @@ import cv2
 import torch
 import torch.nn as nn
 import numpy as np
+import os
 
-# Parameters (must match Verilog)
+# === Configuration === #
 IN_CHANNELS = 2
 OUT_CHANNELS = 1
 IN_HEIGHT = 4
@@ -12,51 +13,87 @@ KERNEL_SIZE = 2
 STRIDE = 2
 PADDING = 0
 BATCH_SIZE = 1
-DATA_WIDTH = 8
+DATA_WIDTH = 8  # bits
 
-# Output dims
 OUT_HEIGHT = (IN_HEIGHT + 2 * PADDING - KERNEL_SIZE) // STRIDE + 1
 OUT_WIDTH = (IN_WIDTH + 2 * PADDING - KERNEL_SIZE) // STRIDE + 1
 
-# Load and preprocess image
-img = cv2.imread("test.png")
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-img = cv2.resize(img, (IN_WIDTH, IN_HEIGHT))  # ensure size matches
-img = img.astype(np.uint8)
+INPUT_IMAGE_PATH = "test.png"
+OUTPUT_DIR = "."
+IMAGE_OUTPUT_PATHS = {
+    "input": os.path.join(OUTPUT_DIR, "input_data.txt"),
+    "weights": os.path.join(OUTPUT_DIR, "weights.txt"),
+    "bias": os.path.join(OUTPUT_DIR, "bias.txt"),
+    "output": os.path.join(OUTPUT_DIR, "expected_output.txt")
+}
 
-# Use only first IN_CHANNELS channels
-if IN_CHANNELS > 3:
-    raise ValueError("Image has only 3 channels (RGB)")
-img = img[:, :, :IN_CHANNELS]  # shape: [H, W, C]
+# === Functions === #
 
-# Convert to tensor: [B, C, H, W]
-image_tensor = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)  # [1, C, H, W]
-image_tensor = image_tensor.to(dtype=torch.float32)
+def preprocess_image(image_path: str) -> torch.Tensor:
+    """Load and preprocess image to match input shape for Conv2D."""
+    img = cv2.imread(image_path)
+    if img is None:
+        raise FileNotFoundError(f"Image not found at path: {image_path}")
+    
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = cv2.resize(img, (IN_WIDTH, IN_HEIGHT))
+    img = img.astype(np.uint8)
 
-# Flatten and save input data in NCHW order
-input_flat = image_tensor.squeeze(0).to(torch.int32).numpy().reshape(-1)
-np.savetxt("input_data.txt", input_flat, fmt='0x%02X')
+    if IN_CHANNELS > 3:
+        raise ValueError("Image only supports up to 3 channels (RGB)")
 
-# Create conv layer with weights=1, bias=0
-conv = nn.Conv2d(IN_CHANNELS, OUT_CHANNELS, kernel_size=KERNEL_SIZE, stride=STRIDE, padding=PADDING, bias=True)
-with torch.no_grad():
-    conv.weight.fill_(1.0)
-    conv.bias.zero_()
+    img = img[:, :, :IN_CHANNELS]
+    tensor = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).float()
+    assert tensor.shape == (1, IN_CHANNELS, IN_HEIGHT, IN_WIDTH)
+    return tensor
 
-# Save weights (shape: [OUT_CHANNELS, IN_CHANNELS, KH, KW])
-weight_flat = conv.weight.squeeze(0).reshape(-1).to(torch.int32).numpy()
-np.savetxt("weights.txt", weight_flat, fmt='0x%02X')
+def save_tensor_flat_hex(tensor: torch.Tensor, path: str):
+    """Save a flattened tensor as hex integers."""
+    flat = tensor.to(torch.int32).numpy().reshape(-1)
+    np.savetxt(path, flat, fmt='0x%02X')
 
-# Save biases (should be zeros)
-bias_flat = conv.bias.to(torch.int32).numpy()
-np.savetxt("bias.txt", bias_flat, fmt='0x%02X')
+def create_conv_layer() -> nn.Conv2d:
+    """Create Conv2D layer with all weights = 1 and biases = 0."""
+    conv = nn.Conv2d(IN_CHANNELS, OUT_CHANNELS, KERNEL_SIZE, STRIDE, PADDING, bias=True)
+    with torch.no_grad():
+        conv.weight.fill_(1.0)
+        conv.bias.zero_()
+    return conv
 
-# Run convolution and save output
-with torch.no_grad():
-    output = conv(image_tensor)
+def save_weights_bias(conv: nn.Conv2d, weight_path: str, bias_path: str):
+    """Save flattened weights and biases to hex files."""
+    weights = conv.weight.detach().reshape(-1).to(torch.int32).numpy()
+    bias = conv.bias.detach().to(torch.int32).numpy()
+    np.savetxt(weight_path, weights, fmt='0x%02X')
+    np.savetxt(bias_path, bias, fmt='0x%02X')
 
-# Output shape: [1, OUT_CHANNELS, OUT_HEIGHT, OUT_WIDTH]
-output_flat = output.squeeze(0).to(torch.int32).numpy().reshape(-1)
-np.savetxt("expected_output.txt", output_flat, fmt='0x%02X')
+def run_convolution(conv: nn.Conv2d, input_tensor: torch.Tensor) -> torch.Tensor:
+    """Run convolution and return output tensor."""
+    with torch.no_grad():
+        return conv(input_tensor)
 
-print("✅ Input, weights, bias, and expected output saved successfully in HEX format.")
+# === Main Flow === #
+
+def main():
+    # 1. Load and process input image
+    input_tensor = preprocess_image(INPUT_IMAGE_PATH)
+    
+    # 2. Save input tensor in hex
+    save_tensor_flat_hex(input_tensor.squeeze(0), IMAGE_OUTPUT_PATHS["input"])
+    
+    # 3. Create and initialize convolution layer
+    conv = create_conv_layer()
+    
+    # 4. Save weights and biases
+    save_weights_bias(conv, IMAGE_OUTPUT_PATHS["weights"], IMAGE_OUTPUT_PATHS["bias"])
+    
+    # 5. Run convolution
+    output = run_convolution(conv, input_tensor)
+
+    # 6. Save output tensor
+    save_tensor_flat_hex(output.squeeze(0), IMAGE_OUTPUT_PATHS["output"])
+
+    print("✅ All tensors saved successfully in HEX format.")
+
+if __name__ == "__main__":
+    main()
